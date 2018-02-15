@@ -35,8 +35,9 @@ def createSystemTables():
     cur.execute("CREATE TABLE assigned (id integer primary key, user_name text, table_name text, grantable integer)")
     cur.execute("CREATE TABLE forbidden (id integer primary key, user_name text, table_name text)")
     cur.execute("CREATE TABLE dblog (id integer primary key, log_type text, log_msg text, [timestamp] timestamp)")
+    cur.execute("CREATE TABLE emp (emp_id text, emp_name text, emp_age integer)")
+    cur.execute("CREATE TABLE salary (emp_id real)")
     conn.commit()
-
 
 
 # Query user table with user name
@@ -145,6 +146,7 @@ def accessTable(userName, isUserSO, targetTableName):
 def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
     # Insert into assigned table
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable) VALUES (?, ?, ?)", (targetUser, targetTable, grantable))
+    conn.commit()
     return True
 
 # Perform query (validness of query has been checked)
@@ -157,6 +159,11 @@ def performQuery(userName, isUserSO, query):
     elif operation == 'access':
         accessTable(userName, isUserSO, strArr[1])
     elif operation == 'grant':
+        targetUser = strArr[1]
+        targetTable = strArr[2]
+        grantable = False
+        if len(strArr) > 3 and strArr[3].lower() == 'grantable':
+            grantable = True
         grantAccess(userName, isUserSO, targetUser, targetTable, grantable)
     else:
         print('invalid operation')

@@ -10,6 +10,9 @@ createUserTable()
 # Create empty system tables (assigned, forbidden, dblog)
 createSystemTables()
 
+# Create regular tables (emp, salary)
+createRegularTables()
+
 # Current user related variables
 userLoggedIn = False
 userName = ''

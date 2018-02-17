@@ -6,7 +6,7 @@ operations = ['grant', 'forbid', 'print', 'access']
 options = ['grantable']
 
 # table list that only SO can access
-so_access_only_tables = ['forbidden', 'dblog']
+so_access_only_tables = ['forbidden', 'assigned', 'dblog']
 
 # Start DB
 def startDB():
@@ -32,11 +32,35 @@ def createUserTable():
 
 # Create 'assigned', 'forbidden', 'dblog' table
 def createSystemTables():
-    cur.execute("CREATE TABLE assigned (id integer primary key, user_name text, table_name text, grantable integer)")
+    cur.execute("CREATE TABLE assigned (id integer primary key, user_name text, table_name text, grantable integer, forbid_attempt integer)")
     cur.execute("CREATE TABLE forbidden (id integer primary key, user_name text, table_name text)")
     cur.execute("CREATE TABLE dblog (id integer primary key, log_type text, log_msg text, [timestamp] timestamp)")
-    cur.execute("CREATE TABLE emp (emp_id text, emp_name text, emp_age integer)")
-    cur.execute("CREATE TABLE salary (emp_id real)")
+    conn.commit()
+
+    # By default, regular users can access to emp table
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt) VALUES ('marek', 'emp', 1, 0)")
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt) VALUES ('dexter', 'emp', 0, 0)")
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt) VALUES ('tester', 'emp', 0, 0)")
+
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt) VALUES ('marek', 'reglog', 0, 0)")
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt) VALUES ('dexter', 'reglog', 0, 0)")
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt) VALUES ('tester', 'reglog', 0, 0)")
+    conn.commit()
+
+# Populate sample data that regular user can access
+def createRegularTables():
+    # reglog is log table for regular users (warnings to each users)
+    cur.execute("CREATE TABLE reglog(id integer primary key, to_user_name text, log_msg text, [timestamp] timestamp)")
+
+    cur.execute("CREATE TABLE emp (emp_id text, emp_name text)")
+    cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('1', 'Marek')")
+    cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('2', 'Dexter')")
+    cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('3', 'Tester')")
+
+    cur.execute("CREATE TABLE salary (emp_id text, emp_salary real)")
+    cur.execute("INSERT INTO salary(emp_id, emp_salary) VALUES ('1', 95000)")
+    cur.execute("INSERT INTO salary(emp_id, emp_salary) VALUES ('2', 70000)")
+    cur.execute("INSERT INTO salary(emp_id, emp_salary) VALUES ('3', 35000)")
     conn.commit()
 
 
@@ -120,17 +144,19 @@ def checkValidQuery(query):
     return True
 
 # Log important message into dblog table
-def logMessage(logType, logMessage):
+def logMessage(logType, message):
     # Insert log message
-    cur.execute("INSERT INTO dblog(log_type, log_msg, timestamp) VALUES (?, ?, ?)", (logType, logMessage, datetime.now()))
+    cur.execute("INSERT INTO dblog(log_type, log_msg, timestamp) VALUES (?, ?, ?)", (logType, message, datetime.now()))
     conn.commit()
 
 # List all rows for target table
 def printTable(userName, isUserSO, targetTableName):
-    cur.execute("SELECT * FROM {}".format(targetTableName))
-    queryResult = cur.fetchall()
-    for row in queryResult:
-        print(row)
+    # First, check if the user has privilege
+    if accessTable(userName, isUserSO, targetTableName):
+        cur.execute("SELECT * FROM {}".format(targetTableName))
+        queryResult = cur.fetchall()
+        for row in queryResult:
+            print(row)
 
 # Access table
 def accessTable(userName, isUserSO, targetTableName):
@@ -138,7 +164,7 @@ def accessTable(userName, isUserSO, targetTableName):
     if targetTableName in so_access_only_tables:
         if isUserSO == False:
             print('You have no access to this table [' + targetTableName + ']')
-            logMessage('ERROR', 'Invalid access from [' + userName + '] to table [' + targetTableName +']')
+            logMessage('ERROR', 'Invalid access attempt from [' + userName + '] to table [' + targetTableName +']')
             return False
     return True
 
@@ -148,6 +174,47 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable) VALUES (?, ?, ?)", (targetUser, targetTable, grantable))
     conn.commit()
     return True
+
+# Add user into forbidden table
+def addUserToForbiddenTable(targetUser, targetTable):
+    print('User [' + targetUser + '] added on forbid list')
+    cur.execute("INSERT INTO forbidden(user_name, table_name) VALUES (?, ?)", (targetUser, targetTable))
+    conn.commit()
+
+# Forbid access of user to target table
+def forbidAccess(userName, isUserSO, targetUser, targetTable):
+    # Is user security officer?
+    if isUserSO == True:
+        # Check if target user has access to the target table
+        cur.execute("SELECT * FROM assigned WHERE user_name=? AND table_name=?", [targetUser, targetTable])
+        queryResult = cur.fetchone()
+
+        # If so, print out warning message (first attempt failed) and update attempt value
+        if queryResult != None:
+            # Check if forbid attemp was made before and if this is first forbid attempt,
+            # stop forbidding operation and add forbid_attempt 1 and notify SO
+            if queryResult["forbid_attempt"] == 0:
+                print('User [' + targetUser + '] is in assigned table. Try operation again if you want to overwrite.')
+                print('Warning: if you overwrite, then it may result disruption of operaionts for delegated users.')
+                cur.execute("UPDATE assigned SET forbid_attempt = 1 WHERE user_name=? AND table_name=?", (targetUser, targetTable))
+                conn.commit()
+            # If this is second forbid attempt, then just remove it from assigned table
+            # And add to forbidden table
+            elif queryResult["forbid_attempt"] == 1:
+                cur.execute("DELETE FROM assigned WHERE user_name=? AND table_name=?", (targetUser, targetTable))
+                conn.commit()
+                addUserToForbiddenTable(targetUser, targetTable)
+        else:
+            # Add target user into forbidden table
+            addUserToForbiddenTable(targetUser, targetTable)
+
+        # At the same time, warn SO that this will make all delegations revoked [ToDo]
+    else:
+        print('You do not have privilege to access system table')
+        # Regular user tried to write forbidden table => report to SO
+        logMessage('ERROR', 'Regular user [' + userName + '] tried to forbid access of [' + targetUser + '] on table [' + targetTable + ']')
+        conn.commit()
+        return False
 
 # Perform query (validness of query has been checked)
 def performQuery(userName, isUserSO, query):
@@ -165,6 +232,10 @@ def performQuery(userName, isUserSO, query):
         if len(strArr) > 3 and strArr[3].lower() == 'grantable':
             grantable = True
         grantAccess(userName, isUserSO, targetUser, targetTable, grantable)
+    elif operation == 'forbid':
+        targetUser = strArr[1]
+        targetTable = strArr[2]
+        forbidAccess(userName, isUserSO, targetUser, targetTable)
     else:
         print('invalid operation')
     return True

@@ -13,6 +13,8 @@ createSystemTables()
 # Create regular tables (emp, salary)
 createRegularTables()
 
+establishSampleCase()
+
 # Current user related variables
 userLoggedIn = False
 userName = ''

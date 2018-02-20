@@ -54,6 +54,9 @@ def establishSampleCase():
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('boxter', 'salary', 1, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('tester', 'salary', 0, 0, 'dexter')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('worker', 'salary', 0, 0, 'boxter')")
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'assigned', 0, 0, 'admin')")
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'forbidden', 0, 0, 'admin')")
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'dblog', 0, 0, 'admin')")
 
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('marek', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('dexter', 'reglog', 0, 0, 'admin')")
@@ -225,7 +228,7 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
         logMessageForRegularUsers(userName, 'Invalid Granting Operation', 'You tried to grant access to [' + targetUser + '] but you do not have grantable permission')
         print('You do not have grantable permission for [' + targetTable + ']')
 
-    
+
     # Otherwise, insert into assigned table
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES (?, ?, ?, ?, ?)", (targetUser, targetTable, grantable, 0, userName))
     conn.commit()

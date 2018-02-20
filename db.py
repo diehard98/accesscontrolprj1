@@ -189,6 +189,12 @@ def accessTable(userName, isUserSO, targetTableName):
             print('You have no access to this table [' + targetTableName + ']')
             logMessageForSO('ERROR', 'Invalid access attempt from [' + userName + '] to table [' + targetTableName +']')
             return False
+
+    # Check if user has access to table
+    if not canAccess(userName, targetTableName):
+        print('You have no access to this table [' + targetTableName + ']')
+        logMessageForSO('ERROR', 'Invalid access attempt from [' + userName + '] to table [' + targetTableName +']')
+        return False
     return True
 
 # Grant access to another user
@@ -212,7 +218,7 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
         print('ERROR: Grant of access to user[' + targetUser + '] on the table [' + targetTable + '] by you is unacceptable!')
         return False
 
-    # [ToDo]: Catch invalid granting operation => Trying to grant a table without grantable privilege
+    # Catch invalid granting operation => Trying to grant a table without grantable privilege
     if not canGrant(userName, targetTable):
         # => Sending warning to user log and also SO
         logMessageForSO('Invalid Granting Operation', 'User [' + userName + '] tried to grant [' + targetUser + '] access to [' + targetTable + '] but does not have grantable permission')
@@ -325,18 +331,32 @@ def performQuery(userName, isUserSO, query):
         print('invalid operation')
     return True
 
-#Recursively checks if user has grantable and subsequent parents have grantable
+# Recursively checks if user has grantable and subsequent parents have grantable
 def canGrant(username, tableName):
-    #Base case (all paths should have admin as their root)
+    # Base case (all paths should have admin as their root)
     if username == 'admin':
         return True
 
-    #Check if they have grantable
+    # Check if they have grantable
     cur.execute("SELECT grantable, granted_by FROM assigned WHERE user_name=? and table_name=?", [username,tableName])
     queryResult = cur.fetchall()
     for row in queryResult:
-        #If they have grantable, check if parent has grantable (recursively)
+        # If they have grantable, recursively check if parent has grantable
         if row[0] == 1:
             return canGrant(row[1], tableName)
 
+    return False
+
+# Recursively checks if user has grantable and subsequent parents have grantable
+def canAccess(username, tableName):
+    # Check who gave them access to table
+    cur.execute("SELECT granted_by FROM assigned WHERE user_name=? and table_name=?", [username,tableName])
+    queryResult = cur.fetchall()
+
+    # Check if parent is allowed to give them access
+    for parent in queryResult:
+        if canGrant(parent[0], tableName):
+            return True
+
+    # If all parents did not have grantable or user have entry in assigned table
     return False

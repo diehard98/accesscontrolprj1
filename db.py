@@ -213,7 +213,12 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
         return False
 
     # [ToDo]: Catch invalid granting operation => Trying to grant a table without grantable privilege
-    # => Sending warning to user log and also SO
+    if not canGrant(userName, targetTable):
+        # => Sending warning to user log and also SO
+        logMessageForSO('Invalid Granting Operation', 'User [' + userName + '] tried to grant [' + targetUser + '] access to [' + targetTable + '] but does not have grantable permission')
+        logMessageForRegularUsers(userName, 'Invalid Granting Operation', 'You tried to grant access to [' + targetUser + '] but you do not have grantable permission')
+        print('You do not have grantable permission for [' + targetTable + ']')
+
     
     # Otherwise, insert into assigned table
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES (?, ?, ?, ?, ?)", (targetUser, targetTable, grantable, 0, userName))
@@ -319,3 +324,19 @@ def performQuery(userName, isUserSO, query):
     else:
         print('invalid operation')
     return True
+
+#Recursively checks if user has grantable and subsequent parents have grantable
+def canGrant(username, tableName):
+    #Base case (all paths should have admin as their root)
+    if username == 'admin':
+        return True
+
+    #Check if they have grantable
+    cur.execute("SELECT grantable, granted_by FROM assigned WHERE user_name=? and table_name=?", [username,tableName])
+    queryResult = cur.fetchall()
+    for row in queryResult:
+        #If they have grantable, check if parent has grantable (recursively)
+        if row[0] == 1:
+            return canGrant(row[1], tableName)
+
+    return False

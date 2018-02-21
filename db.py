@@ -30,6 +30,8 @@ def createUserTable():
     cur.execute("INSERT INTO users(user_name, user_type) VALUES ('boxter', 'reg')")
     cur.execute("INSERT INTO users(user_name, user_type) VALUES ('tester', 'reg')")
     cur.execute("INSERT INTO users(user_name, user_type) VALUES ('worker', 'reg')")
+    cur.execute("INSERT INTO users(user_name, user_type) VALUES ('mytest', 'reg')")
+
     conn.commit()
 
 # Create 'assigned', 'forbidden', 'dblog' table
@@ -63,6 +65,9 @@ def establishSampleCase():
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('tester', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('boxter', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('worker', 'reglog', 0, 0, 'admin')")
+
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('mytest', 'salary', 0, 0, 'worker')")
+    #cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('mytest', 'salary', 0, 0, 'admin')")
     conn.commit()
 
 # Populate sample data that regular user can access
@@ -189,13 +194,13 @@ def accessTable(userName, isUserSO, targetTableName):
     # Check if regular user is trying to access SO only accessable tables
     if targetTableName in so_access_only_tables:
         if isUserSO == False:
-            print('You have no access to this table [' + targetTableName + ']')
+            print('You do not have access to table [' + targetTableName + ']')
             logMessageForSO('ERROR', 'Invalid access attempt from [' + userName + '] to table [' + targetTableName +']')
             return False
 
     # Check if user has access to table
     if not canAccess(userName, targetTableName):
-        print('You have no access to this table [' + targetTableName + ']')
+        print('You do not have access to table [' + targetTableName + ']')
         logMessageForSO('ERROR', 'Invalid access attempt from [' + userName + '] to table [' + targetTableName +']')
         return False
     return True
@@ -346,7 +351,8 @@ def canGrant(username, tableName):
     for row in queryResult:
         # If they have grantable, recursively check if parent has grantable
         if row[0] == 1:
-            return canGrant(row[1], tableName)
+            if canGrant(row[1], tableName):
+                return True
 
     return False
 

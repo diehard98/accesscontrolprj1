@@ -30,7 +30,7 @@ def createUserTable():
     cur.execute("INSERT INTO users(user_name, user_type) VALUES ('boxter', 'reg')")
     cur.execute("INSERT INTO users(user_name, user_type) VALUES ('tester', 'reg')")
     cur.execute("INSERT INTO users(user_name, user_type) VALUES ('worker', 'reg')")
-    cur.execute("INSERT INTO users(user_name, user_type) VALUES ('mytest', 'reg')")
+    #cur.execute("INSERT INTO users(user_name, user_type) VALUES ('mytest', 'reg')")
 
     conn.commit()
 
@@ -66,7 +66,7 @@ def establishSampleCase():
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('boxter', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('worker', 'reglog', 0, 0, 'admin')")
 
-    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('mytest', 'salary', 0, 0, 'worker')")
+    #cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('mytest', 'salary', 0, 0, 'worker')")
     #cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('mytest', 'salary', 0, 0, 'admin')")
     conn.commit()
 

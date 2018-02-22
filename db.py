@@ -19,6 +19,7 @@ def startDB():
 
 # Close DB
 def closeDB():
+    print("DB closed!")
     conn.close()
 
 # Create user table

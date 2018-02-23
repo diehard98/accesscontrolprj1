@@ -98,16 +98,19 @@ def queryUser(targetUserName):
 def tryToLoginUser(targetUserName):
     queryResult = queryUser(targetUserName)
     isUserSO = False
+    returnMessage = ''
     if queryResult:
         if queryResult["user_type"] == 'so':
-            print('Welcome [' + queryResult["user_name"]  + ']: You are Security Officer')
+            returnMessage = 'Welcome [' + queryResult["user_name"]  + ']: You are Security Officer'
+            #print('Welcome [' + queryResult["user_name"]  + ']: You are Security Officer')
             isUserSO = True
         else:
-            print('Welcome [' + queryResult["user_name"] + ']: You are regular user')
+            returnMessage = 'Welcome [' + queryResult["user_name"] + ']: You are regular user'
+            #print('Welcome [' + queryResult["user_name"] + ']: You are regular user')
             isUserSO = False
-        return True, isUserSO
+        return True, isUserSO, returnMessage
     else:
-        return False, False
+        return False, False, returnMessage
 
 
 # Check if table exists

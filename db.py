@@ -61,6 +61,7 @@ def establishSampleCase():
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'forbidden', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'dblog', 0, 0, 'admin')")
 
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('marek', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('dexter', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('tester', 'reglog', 0, 0, 'admin')")
@@ -76,10 +77,10 @@ def createRegularTables():
     # reglog is log table for regular users (warnings to each users)
     cur.execute("CREATE TABLE reglog(id integer primary key, to_user_name text, log_type text, log_msg text, [timestamp] timestamp)")
 
-    cur.execute("CREATE TABLE emp (emp_id text, emp_name text)")
-    cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('1', 'Marek')")
-    cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('2', 'Dexter')")
-    cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('3', 'Tester')")
+    # cur.execute("CREATE TABLE emp (emp_id text, emp_name text)")
+    # cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('1', 'Marek')")
+    # cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('2', 'Dexter')")
+    # cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('3', 'Tester')")
 
     cur.execute("CREATE TABLE salary (emp_id text, emp_salary real)")
     cur.execute("INSERT INTO salary(emp_id, emp_salary) VALUES ('1', 95000)")
@@ -218,6 +219,7 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
     if queryResult != None:
         # Same grant exist in the assigned table, so this grant operation will not need to be happened
         logMessageForSO('Duplicated Grant Operation', 'User [' + userName + '] tried to grant duplicated access to table [' + targetTable +'] on user [' + targetUser + ']')
+        logMessageForRegularUsers(userName, 'Duplicated Grant Operation', 'You tried to grant duplicated access to table [' + targetTable +'] on user [' + targetUser + ']')
         return False, 'ERROR: user [' + targetUser + '] already granted access from you on the table [' + targetTable + ']'
 
     # Check if target user is on the forbidden table by SO
@@ -239,6 +241,8 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
     # Otherwise, insert into assigned table
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES (?, ?, ?, ?, ?)", (targetUser, targetTable, grantable, 0, userName))
     conn.commit()
+    logMessageForSO('Successful Grant Operation', 'User [' + userName + '] granted [' + targetUser + '] access to [' + targetTable + ']')
+    logMessageForRegularUsers(userName, 'Successful Grant Operation', 'You granted access [' + targetUser + '] on [' + targetTable + ']')
     return True, 'User [' + targetUser + '] successfully gratned access privilege on table [' + targetTable + ']'
 
 # Add user into forbidden table

@@ -15,14 +15,16 @@ createRegularTables()
 
 establishSampleCase()
 
-# Current user related variables
-userLoggedIn = False
-userName = ''
-isUserSO = False
+
 
 class projectGUI:
 
     def __init__(self, master):
+        # Current user related variables
+        self.userLoggedIn = False
+        self.userName = ''
+        self.isUserSO = False
+
         self.master = master
         master.title("CS 505 Project 1 GUI")
 
@@ -43,7 +45,7 @@ class projectGUI:
         self.logoutButton.grid(row=0, column=3)
 
         self.operationLabel = Label(master, text="Operation:").grid(row=1, column=0)
-        operationOptionList = ["ACCESS","GRANT","GRANT WITH GRANT OPTION","PRINT"]
+        operationOptionList = ["ACCESS","FORBID","GRANT","GRANT WITH GRANT OPTION","PRINT"]
         self.operationOptionListVar = StringVar()
         self.operationOptionListVar.set(operationOptionList[0])
         self.currentOperation = operationOptionList[0].lower()
@@ -87,6 +89,11 @@ class projectGUI:
 
     def updateOperation(self, value):
         self.currentOperation = value.lower()
+        # If selected operation is 'print' or 'access', disable target user combo box
+        if self.currentOperation == 'print' or self.currentOperation == 'access':
+            self.targetUserOptionMenu['state'] = 'disabled'
+        else:
+            self.targetUserOptionMenu['state'] = 'normal'
 
     def updateTargetUser(self, value):
         self.currentTargetUser = value.lower()
@@ -95,26 +102,35 @@ class projectGUI:
         self.currentTargetTable = value.lower()
 
     def runQuery(self):
+        queryOperation = self.currentOperation
+        queryTargetUser = self.currentTargetUser
+        queryTargetTable = self.currentTargetTable
+        query = ''
 
-        #if checkValidQuery(userInput):
-        #    performQuery(userName, isUserSO, userInput)
+        if self.currentOperation == 'print' or self.currentOperation == 'access':
+            query = queryOperation + " " + queryTargetTable
+        elif self.currentOperation == 'grant with grant option':
+            query = "grant " + queryTargetUser + " " + queryTargetTable + " grantable"
+        else:
+            query = queryOperation + " " + queryTargetUser + " " + queryTargetTable;
 
-        print(self.currentLoggedInUser)
-        print(self.currentOperation)
-        print(self.currentTargetUser)
-        print(self.currentTargetTable)
+        checkQueryResult, checkQueryReturnStr = checkValidQuery(query)
+        self.printToTextBox(checkQueryReturnStr)
 
+        if checkQueryResult:
+            queryRet, queryRetStr = performQuery(self.userName, self.isUserSO, query)
+            self.printToTextBox(queryRetStr)
 
     def loginUser(self):
         # Check if user name exists in the database
         userInput = self.currentLoggedInUser
-        isUserExist, isUserSO, returnMessage = tryToLoginUser(userInput)
+        isUserExist, self.isUserSO, returnMessage = tryToLoginUser(userInput)
         self.printToTextBox(returnMessage)
 
         if isUserExist:
             # If user exists in user table, passed
-            userLoggedIn = True
-            userName = userInput
+            self.userLoggedIn = True
+            self.userName = userInput
             self.loginButton['state']='disabled'
             self.logoutButton['state']='normal'
             self.runQueryButton['state']='normal'
@@ -123,8 +139,8 @@ class projectGUI:
             print('Please enter correct user name!')
 
     def logoutUser(self):
-        userLoggedIn = False
-        userName = ''
+        self.userLoggedIn = False
+        self.userName = ''
         self.loginButton['state']='normal'
         self.logoutButton['state']='disabled'
         self.runQueryButton['state']='disabled'

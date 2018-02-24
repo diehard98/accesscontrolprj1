@@ -19,7 +19,6 @@ def startDB():
 
 # Close DB
 def closeDB():
-    print("DB closed!")
     conn.close()
 
 # Create user table
@@ -51,6 +50,7 @@ def createSystemTables():
 
 # Establish database with pre-defined data to test cases
 def establishSampleCase():
+    cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'salary', 1, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('marek', 'salary', 1, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('dexter', 'salary', 1, 0, 'marek')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('boxter', 'salary', 1, 0, 'marek')")
@@ -102,11 +102,9 @@ def tryToLoginUser(targetUserName):
     if queryResult:
         if queryResult["user_type"] == 'so':
             returnMessage = 'Welcome [' + queryResult["user_name"]  + ']: You are Security Officer'
-            #print('Welcome [' + queryResult["user_name"]  + ']: You are Security Officer')
             isUserSO = True
         else:
             returnMessage = 'Welcome [' + queryResult["user_name"] + ']: You are regular user'
-            #print('Welcome [' + queryResult["user_name"] + ']: You are regular user')
             isUserSO = False
         return True, isUserSO, returnMessage
     else:
@@ -127,15 +125,12 @@ def checkValidQuery(query):
 
     # Check if the query is at least 3
     if strArrLen < 2:
-        print ('Invalid query! Query needs to be at least 2 parts')
-        return False
+        return False, 'Invalid query! Query needs to be at least 2 parts'
 
     # First part needs to be proper operation command
     operation = strArr[0].lower()
     if operation.strip() not in operations:
-        print('Invalid operation! List of operations:')
-        print(operations)
-        return False
+        return False, 'Invalid operation! List of operations:' + operations
 
     # Handle print operation
     if strArrLen == 2:
@@ -143,32 +138,27 @@ def checkValidQuery(query):
             targetTable = strArr[1]
             queryResult = checkIfTableExist(targetTable)
             if queryResult == None:
-                print('Target table is not in database!')
-                return False
-        return True
+                return False, 'Target table is not in database!'
+        return True, 'Checking query statement... [PASSED]'
 
     # Second part is target user
     targetUserName = strArr[1]
     queryResult = queryUser(targetUserName)
     if queryResult == None:
-        print('Target user is not in database!')
-        return False
+        return False, 'Target user is not in database!'
 
     # Third part is target table
     targetTable = strArr[2]
     queryResult = checkIfTableExist(targetTable)
     if queryResult == None:
-        print('Target table is not in database!')
-        return False
+        return False, 'Target table is not in database!'
 
     # Fourth part is option
     if len(strArr) == 4:
         option = strArr[3].lower()
         if option.strip() not in options:
-            print('Invalid option! List of options:')
-            print(options)
-            return False
-    return True
+            return False, 'Invalid option! List of options:' + options
+    return True, 'Checking query statement... [PASSED]'
 
 # Log important messages into dblog table (only for security officer)
 def logMessageForSO(logType, message):
@@ -183,31 +173,42 @@ def logMessageForRegularUsers(toUserName, logType, message):
 # List all rows for target table
 def printTable(userName, isUserSO, targetTableName):
     # First, check if the user has privilege
-    if accessTable(userName, isUserSO, targetTableName):
+    isAccessAllowed, returnedStr = accessTable(userName, isUserSO, targetTableName)
+    if isAccessAllowed:
         if targetTableName == 'reglog':
             cur.execute("SELECT * FROM reglog WHERE to_user_name=?", [userName])
         else:
             cur.execute("SELECT * FROM {}".format(targetTableName))
 
         queryResult = cur.fetchall()
+        resultRowStrArray = ''
+        rowCounter = 0
+
         for row in queryResult:
-            print(row)
+            if rowCounter == 0:
+                resultRowStrArray = str(row.keys()) + '\n'
+            rowCounter = rowCounter + 1
+
+            for member in row:
+                resultRowStrArray = resultRowStrArray + str(member) + '\t'
+            resultRowStrArray = resultRowStrArray + '\n'
+
+        return True, resultRowStrArray
+    return False, returnedStr
 
 # Access table
 def accessTable(userName, isUserSO, targetTableName):
     # Check if regular user is trying to access SO only accessable tables
     if targetTableName in so_access_only_tables:
         if isUserSO == False:
-            print('You do not have access to table [' + targetTableName + ']')
             logMessageForSO('ERROR', 'Invalid access attempt from [' + userName + '] to table [' + targetTableName +']')
-            return False
+            return False, 'You do not have access to table [' + targetTableName + ']'
 
     # Check if user has access to table
     if not canAccess(userName, targetTableName):
-        print('You do not have access to table [' + targetTableName + ']')
         logMessageForSO('ERROR', 'Invalid access attempt from [' + userName + '] to table [' + targetTableName +']')
-        return False
-    return True
+        return False, 'You do not have access to table [' + targetTableName + ']'
+    return True, 'Access allowed'
 
 # Grant access to another user
 def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
@@ -216,9 +217,8 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
     queryResult = cur.fetchone()
     if queryResult != None:
         # Same grant exist in the assigned table, so this grant operation will not need to be happened
-        print('ERROR: user [' + targetUser + '] already granted access from you on the table [' + targetTable + ']')
         logMessageForSO('Duplicated Grant Operation', 'User [' + userName + '] tried to grant duplicated access to table [' + targetTable +'] on user [' + targetUser + ']')
-        return False
+        return False, 'ERROR: user [' + targetUser + '] already granted access from you on the table [' + targetTable + ']'
 
     # Check if target user is on the forbidden table by SO
     cur.execute("SELECT * FROM forbidden WHERE user_name=? AND table_name=?", [targetUser, targetTable])
@@ -227,25 +227,22 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
         # The target user is on the forbidden table which needs to be reported to user who requested and also SO
         logMessageForSO('Dangerous Grant Operation', 'User [' + userName + '] tried to grant access to user [' + targetUser + '] who is forbidden for the table [' + targetTable + ']')
         logMessageForRegularUsers(userName, 'Dangerous Grant Operation', 'You tried to grant access to user [' + targetUser + '] who is forbidden for the table [' + targetTable + ']')
-        print('ERROR: Grant of access to user[' + targetUser + '] on the table [' + targetTable + '] by you is unacceptable!')
-        return False
+        return False, 'ERROR: Grant of access to user[' + targetUser + '] on the table [' + targetTable + '] by you is unacceptable!'
 
     # Catch invalid granting operation => Trying to grant a table without grantable privilege
     if not canGrant(userName, targetTable):
         # => Sending warning to user log and also SO
         logMessageForSO('Invalid Granting Operation', 'User [' + userName + '] tried to grant [' + targetUser + '] access to [' + targetTable + '] but does not have grantable permission')
         logMessageForRegularUsers(userName, 'Invalid Granting Operation', 'You tried to grant access to [' + targetUser + '] but you do not have grantable permission')
-        print('You do not have grantable permission for [' + targetTable + ']')
-
+        return False, 'You do not have grantable permission for [' + targetTable + ']'
 
     # Otherwise, insert into assigned table
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES (?, ?, ?, ?, ?)", (targetUser, targetTable, grantable, 0, userName))
     conn.commit()
-    return True
+    return True, 'User [' + targetUser + '] successfully gratned access privilege on table [' + targetTable + ']'
 
 # Add user into forbidden table
 def addUserToForbiddenTable(targetUser, targetTable):
-    print('User [' + targetUser + '] added on forbid list')
     cur.execute("INSERT INTO forbidden(user_name, table_name) VALUES (?, ?)", (targetUser, targetTable))
     conn.commit()
 
@@ -283,41 +280,54 @@ def forbidAccess(userName, isUserSO, targetUser, targetTable):
         # Check if target user has access to the target table
         cur.execute("SELECT * FROM assigned WHERE user_name=? AND table_name=?", [targetUser, targetTable])
         queryResult = cur.fetchone()
+        returnStr = ''
 
         # If so, print out warning message (first attempt failed) and update attempt value
         if queryResult != None:
             # Check if forbid attemp was made before and if this is first forbid attempt,
             # stop forbidding operation and add forbid_attempt 1 and notify SO
             if queryResult["forbid_attempt"] == 0:
-                print('User [' + targetUser + '] is in assigned table. Try operation again if you want to overwrite.')
-                print('Warning: if you overwrite, then it may result disruption of operaionts for delegated users.')
+                returnStr = 'User [' + targetUser + '] is in assigned table. Try operation again if you want to overwrite.'
+                returnStr = returnStr + '\nWarning: if you overwrite, then it may result disruption of operaionts for delegated users.'
                 logMessageForSO('Forbidding User Error', 'User [' + targetUser + '] already has access to the table [' + targetTable + ']. Operation stopped.')
                 cur.execute("UPDATE assigned SET forbid_attempt = 1 WHERE user_name=? AND table_name=?", (targetUser, targetTable))
                 conn.commit()
+
             # If this is second forbid attempt, then just remove it from assigned table
             # And add to forbidden table
             elif queryResult["forbid_attempt"] == 1:
+                returnStr = 'User [' + targetUser + '] will be removed from assigned table for [' + targetTable + '] table. It will revoke all granted access from the user.'
                 logMessageForSO('Overwriting Warning', 'User [' + targetUser + '] will be removed from assigned table for [' + targetTable + '] table. It will revoke all granted access from the user.')
                 cur.execute("DELETE FROM assigned WHERE user_name=? AND table_name=?", (targetUser, targetTable))
                 conn.commit()
                 addUserToForbiddenTable(targetUser, targetTable)
                 isUserForbid = True
         else:
-            # Add target user into forbidden table
-            addUserToForbiddenTable(targetUser, targetTable)
-            isUserForbid = True
+            # Check if target user is already on forbidden table
+            cur.execute("SELECT * FROM forbidden WHERE user_name=? AND table_name=?", [targetUser, targetTable])
+            queryResult = cur.fetchone()
+
+            # If this target user is already in forbidden table
+            if queryResult != None:
+                returnStr = 'User [' + targetUser + '] for table [' + targetTable + '] is already in forbidden table!'
+                isUserForbid = False
+            else:
+                # Add target user into forbidden table
+                addUserToForbiddenTable(targetUser, targetTable)
+                isUserForbid = True
 
         # Traverse grant graph recursively to remove revoked privileges by forbid operation
         if isUserForbid == True:
             revokedPrivileges(targetUser, targetTable)
-            return True
+            return True, returnStr
+        else:
+            return False, returnStr
 
     else:
-        print('You do not have privilege to access system table')
         # Regular user tried to write forbidden table => report to SO
         logMessageForSO('ERROR', 'Regular user [' + userName + '] tried to forbid access of [' + targetUser + '] on table [' + targetTable + ']')
         conn.commit()
-        return False
+        return False, 'You do not have privilege to access system table'
 
 # Perform query (validness of query has been checked)
 def performQuery(userName, isUserSO, query):
@@ -325,22 +335,22 @@ def performQuery(userName, isUserSO, query):
     operation = strArr[0].lower()
 
     if operation == 'print':
-        printTable(userName, isUserSO, strArr[1])
+        return printTable(userName, isUserSO, strArr[1])
     elif operation == 'access':
-        accessTable(userName, isUserSO, strArr[1])
+        return accessTable(userName, isUserSO, strArr[1])
     elif operation == 'grant':
         targetUser = strArr[1]
         targetTable = strArr[2]
         grantable = False
         if len(strArr) > 3 and strArr[3].lower() == 'grantable':
             grantable = True
-        grantAccess(userName, isUserSO, targetUser, targetTable, grantable)
+        return grantAccess(userName, isUserSO, targetUser, targetTable, grantable)
     elif operation == 'forbid':
         targetUser = strArr[1]
         targetTable = strArr[2]
-        forbidAccess(userName, isUserSO, targetUser, targetTable)
+        return forbidAccess(userName, isUserSO, targetUser, targetTable)
     else:
-        print('invalid operation')
+        return False, 'Invalid operation!'
     return True
 
 # Recursively checks if user has grantable and subsequent parents have grantable

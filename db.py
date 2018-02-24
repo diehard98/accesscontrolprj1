@@ -201,12 +201,12 @@ def accessTable(userName, isUserSO, targetTableName):
     # Check if regular user is trying to access SO only accessable tables
     if targetTableName in so_access_only_tables:
         if isUserSO == False:
-            logMessageForSO('ERROR', 'Invalid access attempt from [' + userName + '] to table [' + targetTableName +']')
+            logMessageForSO('INVALID_ACCESS_ATTEMPT', 'Invalid access attempt from [' + userName + '] to table [' + targetTableName +']')
             return False, 'You do not have access to table [' + targetTableName + ']'
 
     # Check if user has access to table
     if not canAccess(userName, targetTableName):
-        logMessageForSO('ERROR', 'Invalid access attempt from [' + userName + '] to table [' + targetTableName +']')
+        logMessageForSO('INVALID_ACCESS_ATTEMPT', 'Invalid access attempt from [' + userName + '] to table [' + targetTableName +']')
         return False, 'You do not have access to table [' + targetTableName + ']'
     return True, 'Access allowed'
 
@@ -289,7 +289,7 @@ def forbidAccess(userName, isUserSO, targetUser, targetTable):
             if queryResult["forbid_attempt"] == 0:
                 returnStr = 'User [' + targetUser + '] is in assigned table. Try operation again if you want to overwrite.'
                 returnStr = returnStr + '\nWarning: if you overwrite, then it may result disruption of operaionts for delegated users.'
-                logMessageForSO('Forbidding User Error', 'User [' + targetUser + '] already has access to the table [' + targetTable + ']. Operation stopped.')
+                logMessageForSO('FORBID_UESR_ERROR', 'User [' + targetUser + '] already has access to the table [' + targetTable + ']. Operation stopped.')
                 cur.execute("UPDATE assigned SET forbid_attempt = 1 WHERE user_name=? AND table_name=?", (targetUser, targetTable))
                 conn.commit()
 
@@ -297,7 +297,7 @@ def forbidAccess(userName, isUserSO, targetUser, targetTable):
             # And add to forbidden table
             elif queryResult["forbid_attempt"] == 1:
                 returnStr = 'User [' + targetUser + '] will be removed from assigned table for [' + targetTable + '] table. It will revoke all granted access from the user.'
-                logMessageForSO('Overwriting Warning', 'User [' + targetUser + '] will be removed from assigned table for [' + targetTable + '] table. It will revoke all granted access from the user.')
+                logMessageForSO('OVERWRITE_WARNING', 'User [' + targetUser + '] will be removed from assigned table for [' + targetTable + '] table. It will revoke all granted access from the user.')
                 cur.execute("DELETE FROM assigned WHERE user_name=? AND table_name=?", (targetUser, targetTable))
                 conn.commit()
                 addUserToForbiddenTable(targetUser, targetTable)
@@ -325,7 +325,7 @@ def forbidAccess(userName, isUserSO, targetUser, targetTable):
 
     else:
         # Regular user tried to write forbidden table => report to SO
-        logMessageForSO('ERROR', 'Regular user [' + userName + '] tried to forbid access of [' + targetUser + '] on table [' + targetTable + ']')
+        logMessageForSO('FORBID_ATTEMPT_ERROR', 'Regular user [' + userName + '] tried to forbid access of [' + targetUser + '] on table [' + targetTable + ']')
         conn.commit()
         return False, 'You do not have privilege to access system table'
 

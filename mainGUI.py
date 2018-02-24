@@ -15,8 +15,6 @@ createRegularTables()
 
 establishSampleCase()
 
-
-
 class projectGUI:
 
     def __init__(self, master):
@@ -37,7 +35,6 @@ class projectGUI:
         self.loginUserOptionMenu = OptionMenu(master, self.loginUserOptionListVar, *userList, command=self.updateLoginUser)
         self.loginUserOptionMenu.grid(row=0, column=1)
 
-
         self.loginButton = Button(master, text="Login", command=self.loginUser)
         self.loginButton.grid(row=0, column=2)
 
@@ -50,6 +47,7 @@ class projectGUI:
         self.operationOptionListVar.set(operationOptionList[0])
         self.currentOperation = operationOptionList[0].lower()
         self.operationOptionMenu = OptionMenu(master, self.operationOptionListVar, *operationOptionList, command=self.updateOperation)
+        self.operationOptionMenu['state'] = 'disabled'
         self.operationOptionMenu.grid(row=1, column=1)
 
         self.targetUserLabel = Label(master, text="Target User:").grid(row=1, column=2)
@@ -57,6 +55,7 @@ class projectGUI:
         self.targetUserOptionListVar.set(userList[0])
         self.currentTargetUser = userList[0]
         self.targetUserOptionMenu = OptionMenu(master, self.targetUserOptionListVar, *userList, command=self.updateTargetUser)
+        self.targetUserOptionMenu['state'] = 'disabled'
         self.targetUserOptionMenu.grid(row=1, column=3)
 
         self.targetTableLabel = Label(master, text="Target Table:").grid(row=1, column=4)
@@ -65,14 +64,15 @@ class projectGUI:
         self.targetTableOptionListVar.set(targetTableOptionList[0])
         self.currentTargetTable = targetTableOptionList[0]
         self.targetTableOptionMenu = OptionMenu(master, self.targetTableOptionListVar, *targetTableOptionList, command=self.updateTargetTable)
+        self.targetTableOptionMenu['state'] = 'disabled'
         self.targetTableOptionMenu.grid(row=1, column=5)
 
         self.runQueryButton = Button(master, text='Run query', state=DISABLED, command=self.runQuery)
-        self.runQueryButton.grid(row=2, column=0)
-        self.quitButton = Button(master, text='Quit', command=master.quit).grid(row=2, column=1)
+        self.runQueryButton.grid(row=1, column=6)
+        self.quitButton = Button(master, text='Quit', command=master.quit).grid(row=1, column=7)
 
-        self.textBox = Text(master, borderwidth=2, height=20)
-        self.textBox.grid(row=3, columnspan=6)
+        self.textBox = Text(master, borderwidth=1, width=100, height=25)
+        self.textBox.grid(row=2, columnspan=8)
 
     def printToTextBox(self, message):
         try:
@@ -119,7 +119,7 @@ class projectGUI:
 
         if checkQueryResult:
             queryRet, queryRetStr = performQuery(self.userName, self.isUserSO, query)
-            self.printToTextBox(queryRetStr)
+            self.printToTextBox(queryRetStr + '\n')
 
     def loginUser(self):
         # Check if user name exists in the database
@@ -131,9 +131,13 @@ class projectGUI:
             # If user exists in user table, passed
             self.userLoggedIn = True
             self.userName = userInput
-            self.loginButton['state']='disabled'
-            self.logoutButton['state']='normal'
-            self.runQueryButton['state']='normal'
+            self.loginButton['state'] = 'disabled'
+            self.logoutButton['state'] = 'normal'
+            self.runQueryButton['state'] = 'normal'
+            self.operationOptionMenu['state'] = 'normal'
+            if self.currentOperation == 'print' or self.currentOperation == 'access':
+                self.targetUserOptionMenu['state'] = 'disabled'
+            self.targetTableOptionMenu['state'] = 'normal'
         else:
             # otherwise, keep asking user name
             print('Please enter correct user name!')
@@ -145,6 +149,9 @@ class projectGUI:
         self.logoutButton['state']='disabled'
         self.runQueryButton['state']='disabled'
         self.printToTextBox('Logged out!')
+        self.operationOptionMenu['state'] = 'disabled'
+        self.targetUserOptionMenu['state'] = 'disabled'
+        self.targetTableOptionMenu['state'] = 'disabled'
 
 root = Tk()
 my_gui = projectGUI(root)

@@ -293,7 +293,7 @@ def forbidAccess(userName, isUserSO, targetUser, targetTable):
             if queryResult["forbid_attempt"] == 0:
                 returnStr = 'User [' + targetUser + '] is in assigned table. Try operation again if you want to overwrite.'
                 returnStr = returnStr + '\nWarning: if you overwrite, then it may result disruption of operaionts for delegated users.'
-                logMessageForSO('FORBID_UESR_ERROR', 'User [' + targetUser + '] already has access to the table [' + targetTable + ']. Operation stopped.')
+                logMessageForSO('FORBID_USER_ERROR', 'User [' + targetUser + '] already has access to the table [' + targetTable + ']. Operation stopped.')
                 cur.execute("UPDATE assigned SET forbid_attempt = 1 WHERE user_name=? AND table_name=?", (targetUser, targetTable))
                 conn.commit()
 
@@ -387,3 +387,12 @@ def canAccess(username, tableName):
 
     # If all parents did not have grantable or user have entry in assigned table
     return False
+
+def revokeAccess(revoker, revokee, table):
+    if not canAccess(revoker, table):
+            logMessageForRegularUsers(userName, 'FORBID_USER_ERROR', 'You have no access to table [' + table + ']')
+            logMessageForSO(userName, 'FORBID_USER_ERROR', '[' + revoker + '] tried to revoke access of [' + revokee + '] to [' + table + ']')
+    cur.execute("DELETE FROM assigned WHERE granted_by=? and username=? and table_name=?", [revoker,revokee,tableName])
+    #queryResult = cur.fetchall()
+
+    logMessageForRegularUsers(userName, 'Revoke Operation', 'You revoked [' + targetUser + ']\'s access to ['+ targetTable +']')

@@ -396,3 +396,10 @@ def revokeAccess(revoker, revokee, table):
     #queryResult = cur.fetchall()
 
     logMessageForRegularUsers(userName, 'Revoke Operation', 'You revoked [' + targetUser + ']\'s access to ['+ targetTable +']')
+
+def getUsers():
+    userList = list()#["admin","marek","dexter","boxter","tester","worker"]
+    cur.execute("SELECT user_name from users")
+    for user in cur.fetchall():
+        userList.append(user[0])
+    return userList

@@ -26,7 +26,7 @@ class projectGUI:
         self.master = master
         master.title("CS 505 Project 1 GUI")
 
-        userList = ["admin","marek","dexter","boxter","tester","worker"]
+        userList = getUsers()#["admin","marek","dexter","boxter","tester","worker"]
 
         self.loginUserLabel = Label(master, text="User Name:").grid(row=0, column=0)
         self.loginUserOptionListVar = StringVar()

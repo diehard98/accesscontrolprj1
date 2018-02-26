@@ -42,7 +42,7 @@ class projectGUI:
         self.logoutButton.grid(row=0, column=3)
 
         self.operationLabel = Label(master, text="Operation:").grid(row=1, column=0)
-        operationOptionList = ["ACCESS","FORBID","GRANT","GRANT WITH GRANT OPTION","PRINT"]
+        operationOptionList = ["ACCESS","REVOKE","FORBID","GRANT","GRANT WITH GRANT OPTION","PRINT"]
         self.operationOptionListVar = StringVar()
         self.operationOptionListVar.set(operationOptionList[0])
         self.currentOperation = operationOptionList[0].lower()

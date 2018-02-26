@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime, date
 
 # [operation] [to: user] [on: table] [option]
-operations = ['grant', 'forbid', 'print', 'access']
+operations = ['grant', 'forbid', 'print', 'access','revoke']
 options = ['grantable']
 
 # table list that only SO can access
@@ -353,6 +353,10 @@ def performQuery(userName, isUserSO, query):
         targetUser = strArr[1]
         targetTable = strArr[2]
         return forbidAccess(userName, isUserSO, targetUser, targetTable)
+    elif operation == 'revoke':
+        targetUser = strArr[1]
+        targetTable = strArr[2]
+        return revokeAccess(userName, targetUser, targetTable)
     else:
         return False, 'Invalid operation!'
     return True
@@ -388,14 +392,17 @@ def canAccess(username, tableName):
     # If all parents did not have grantable or user have entry in assigned table
     return False
 
-def revokeAccess(revoker, revokee, table):
-    if not canAccess(revoker, table):
-            logMessageForRegularUsers(userName, 'FORBID_USER_ERROR', 'You have no access to table [' + table + ']')
-            logMessageForSO(userName, 'FORBID_USER_ERROR', '[' + revoker + '] tried to revoke access of [' + revokee + '] to [' + table + ']')
-    cur.execute("DELETE FROM assigned WHERE granted_by=? and username=? and table_name=?", [revoker,revokee,tableName])
+def revokeAccess(revoker, revokee, targetTable):
+    if not canAccess(revoker, targetTable):
+        logMessageForRegularUsers(revoker, 'FORBID_USER_ERROR', 'You have no access to table [' + targetTable + ']')
+        logMessageForSO(revoker, 'FORBID_USER_ERROR', '[' + revoker + '] tried to revoke access of [' + revokee + '] to [' + targetTable + ']')
+        return False, 'You have no access to table [' + targetTable + ']'
+    cur.execute("DELETE FROM assigned WHERE granted_by=? and user_name=? and table_name=?", [revoker,revokee,targetTable])
     #queryResult = cur.fetchall()
-
-    logMessageForRegularUsers(userName, 'Revoke Operation', 'You revoked [' + targetUser + ']\'s access to ['+ targetTable +']')
+    # Log into revoker's log and revokee's log
+    logMessageForRegularUsers(revoker, 'REVOKE_USER_ACCESS', 'You revoked [' + revokee + ']\'s access to ['+ targetTable +']')
+    logMessageForRegularUsers(revokee, 'ACCESS_REVOKED', 'Your access to ['+ targetTable +'] revoked by [' + revokee + ']')
+    return True, 'You revoked [' + revokee + ']\'s access to ['+ targetTable +']'
 
 def getUsers():
     userList = list()#["admin","marek","dexter","boxter","tester","worker"]

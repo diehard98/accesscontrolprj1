@@ -400,8 +400,8 @@ def canAccess(username, tableName):
 
 def revokeAccess(revoker, revokee, targetTable):
     if not canAccess(revoker, targetTable):
-        logMessageForRegularUsers(revoker, 'FORBID_USER_ERROR', 'You have no access to table [' + targetTable + ']')
-        logMessageForSO('FORBID_USER_ERROR:', '[' + revoker + '] tried to revoke access of [' + revokee + '] to [' + targetTable + ']')
+        logMessageForRegularUsers(revoker, 'REVOKE_ACCESS_ERROR', 'You have no access to table [' + targetTable + ']')
+        logMessageForSO('REVOKE_ACCESS_ERROR:', '[' + revoker + '] tried to revoke access of [' + revokee + '] to [' + targetTable + ']')
         return False, 'You have no access to table [' + targetTable + ']'
     cur.execute("DELETE FROM assigned WHERE granted_by=? and user_name=? and table_name=?", [revoker,revokee,targetTable])
     # Log into revoker's log and revokee's log

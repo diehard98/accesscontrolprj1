@@ -44,7 +44,7 @@ def createSystemTables():
                 forbid_attempt integer,
                 granted_by text
                 )""")
-    cur.execute("CREATE TABLE forbidden (id integer primary key, user_name text, table_name text)")
+    cur.execute("CREATE TABLE forbidden (id integer primary key, user_name text, table_name text, remove_attempt integer)")
     cur.execute("CREATE TABLE dblog (id integer primary key, log_type text, log_msg text, [timestamp] timestamp)")
     conn.commit()
 
@@ -76,11 +76,6 @@ def establishSampleCase():
 def createRegularTables():
     # reglog is log table for regular users (warnings to each users)
     cur.execute("CREATE TABLE reglog(id integer primary key, to_user_name text, log_type text, log_msg text, [timestamp] timestamp)")
-
-    # cur.execute("CREATE TABLE emp (emp_id text, emp_name text)")
-    # cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('1', 'Marek')")
-    # cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('2', 'Dexter')")
-    # cur.execute("INSERT INTO emp(emp_id, emp_name) VALUES ('3', 'Tester')")
 
     cur.execute("CREATE TABLE salary (emp_id text, emp_salary real)")
     cur.execute("INSERT INTO salary(emp_id, emp_salary) VALUES ('1', 95000)")
@@ -226,10 +221,25 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
     cur.execute("SELECT * FROM forbidden WHERE user_name=? AND table_name=?", [targetUser, targetTable])
     queryResult = cur.fetchone()
     if queryResult != None:
-        # The target user is on the forbidden table which needs to be reported to user who requested and also SO
-        logMessageForSO('Dangerous Grant Operation', 'User [' + userName + '] tried to grant access to user [' + targetUser + '] who is forbidden for the table [' + targetTable + ']')
-        logMessageForRegularUsers(userName, 'Dangerous Grant Operation', 'You tried to grant access to user [' + targetUser + '] who is forbidden for the table [' + targetTable + ']')
-        return False, 'ERROR: Grant of access to user[' + targetUser + '] on the table [' + targetTable + '] by you is unacceptable!'
+        if isUserSO == False:
+            # The target user is on the forbidden table which needs to be reported to user who requested and also SO
+            logMessageForSO('Dangerous Grant Operation', 'User [' + userName + '] tried to grant access to user [' + targetUser + '] who is forbidden for the table [' + targetTable + ']')
+            logMessageForRegularUsers(userName, 'Dangerous Grant Operation', 'You tried to grant access to user [' + targetUser + '] who is forbidden for the table [' + targetTable + ']')
+            return False, 'ERROR: Grant of access to user[' + targetUser + '] on the table [' + targetTable + '] by you is unacceptable!'
+        else:
+            # The target user is on the forbidden table but SO maybe want to remove him from forbidden table
+            # This case, we warn SO first and at second attempt, it will remove him from forbidden table and put into assigned table
+            if queryResult['remove_attempt'] == 0:
+                logMessageForSO('Remving Warning:', 'User [' + targetUser + '] is in forbidden table for [' + targetTable + ']. If you want to remove him or her from forbid table, then run same operation again.')
+                cur.execute("UPDATE forbidden SET remove_attempt = 1 WHERE user_name=? AND table_name=?", (targetUser, targetTable))
+                conn.commit()
+                return False, 'User [' + targetUser + '] is in forbidden table for [' + targetTable + ']. If you want to remove him or her from forbid table, then run same operation again.'
+            else:
+                logMessageForSO('Romving User From forbidden:', 'User [' + targetUser + '] for table [' + targetTable + '] is now removed from forbidden table')
+                cur.execute("DELETE FROM forbidden WHERE user_name=? AND table_name=?", (targetUser, targetTable))
+                conn.commit()
+                return True, 'User [' + targetUser + '] for table [' + targetTable + '] is not removed from forbidden table'
+
 
     # Catch invalid granting operation => Trying to grant a table without grantable privilege
     if not canGrant(userName, targetTable):
@@ -247,7 +257,7 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
 
 # Add user into forbidden table
 def addUserToForbiddenTable(targetUser, targetTable):
-    cur.execute("INSERT INTO forbidden(user_name, table_name) VALUES (?, ?)", (targetUser, targetTable))
+    cur.execute("INSERT INTO forbidden(user_name, table_name, remove_attempt) VALUES (?, ?, ?)", (targetUser, targetTable, 0))
     conn.commit()
 
 # Recursively remove revoked privileges

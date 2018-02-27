@@ -10,9 +10,10 @@ createUserTable()
 # Create empty system tables (assigned, forbidden, dblog)
 createSystemTables()
 
-# Create regular tables (emp, salary)
+# Create regular tables (salary, reglog)
 createRegularTables()
 
+# Create pre-defined privilege graph for testing 
 establishSampleCase()
 
 class projectGUI:
@@ -26,7 +27,7 @@ class projectGUI:
         self.master = master
         master.title("CS 505 Project 1 GUI")
 
-        userList = getUsers()#["admin","marek","dexter","boxter","tester","worker"]
+        userList = getUsers()
 
         self.loginUserLabel = Label(master, text="User Name:").grid(row=0, column=0)
         self.loginUserOptionListVar = StringVar()

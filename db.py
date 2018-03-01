@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime, date
 
-# [operation] [to: user] [on: table] [option]
+# List of operations and options
 operations = ['grant', 'forbid', 'print', 'access','revoke']
 options = ['grantable']
 
@@ -49,6 +49,7 @@ def createSystemTables():
 
 # Establish database with pre-defined data to test cases
 def establishSampleCase():
+    # Pre-defined privilege for regular users
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'salary', 1, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('marek', 'salary', 1, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('dexter', 'salary', 1, 0, 'marek')")
@@ -56,19 +57,19 @@ def establishSampleCase():
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('boxter', 'salary', 1, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('tester', 'salary', 0, 0, 'dexter')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('worker', 'salary', 0, 0, 'boxter')")
+
+    # Admin (SO) has access to all system tables
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'assigned', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'forbidden', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'dblog', 0, 0, 'admin')")
 
+    # All users have acess to regular log table (reglog)
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('admin', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('marek', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('dexter', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('tester', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('boxter', 'reglog', 0, 0, 'admin')")
     cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('worker', 'reglog', 0, 0, 'admin')")
-
-    #cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('mytest', 'salary', 0, 0, 'worker')")
-    #cur.execute("INSERT INTO assigned(user_name, table_name, grantable, forbid_attempt, granted_by) VALUES ('mytest', 'salary', 0, 0, 'admin')")
     conn.commit()
 
 # Populate sample data that regular user can access
@@ -236,7 +237,7 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
                 logMessageForSO('REMOVED_FROM_FORBIDDEN:', 'User [' + targetUser + '] for table [' + targetTable + '] is now removed from forbidden table')
                 cur.execute("DELETE FROM forbidden WHERE user_name=? AND table_name=?", (targetUser, targetTable))
                 conn.commit()
-                return True, 'User [' + targetUser + '] for table [' + targetTable + '] is not removed from forbidden table'
+                return True, 'User [' + targetUser + '] for table [' + targetTable + '] is now removed from forbidden table'
 
 
     # Catch invalid granting operation => Trying to grant a table without grantable privilege

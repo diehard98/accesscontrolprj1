@@ -96,10 +96,10 @@ def tryToLoginUser(targetUserName):
     returnMessage = ''
     if queryResult:
         if queryResult["user_type"] == 'so':
-            returnMessage = 'Welcome [' + queryResult["user_name"]  + ']: You are Security Officer'
+            returnMessage = 'Welcome [' + queryResult["user_name"]  + ']: You are the Security Officer'
             isUserSO = True
         else:
-            returnMessage = 'Welcome [' + queryResult["user_name"] + ']: You are regular user'
+            returnMessage = 'Welcome [' + queryResult["user_name"] + ']: You are a regular user'
             isUserSO = False
         return True, isUserSO, returnMessage
     else:
@@ -212,9 +212,9 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
     queryResult = cur.fetchone()
     if queryResult != None:
         # Same grant exist in the assigned table, so this grant operation will not need to be happened
-        logMessageForSO('DUPLICATED_GRANT_OPERATION:', 'User [' + userName + '] tried to grant duplicated access to table [' + targetTable +'] on user [' + targetUser + ']')
-        logMessageForRegularUsers(userName, 'DUPLICATED_GRANT_OPERATION:', 'You tried to grant duplicated access to table [' + targetTable +'] on user [' + targetUser + ']')
-        return False, 'ERROR: user [' + targetUser + '] already granted access from you on the table [' + targetTable + ']'
+        logMessageForSO('DUPLICATED_GRANT_OPERATION:', 'User [' + userName + '] tried to grant duplicate access to table [' + targetTable +'] on user [' + targetUser + ']')
+        logMessageForRegularUsers(userName, 'DUPLICATED_GRANT_OPERATION:', 'You tried to grant duplicate access to table [' + targetTable +'] on user [' + targetUser + ']')
+        return False, 'ERROR: user [' + targetUser + '] already granted access by you on the table [' + targetTable + ']'
 
     # Check if target user is on the forbidden table by SO
     cur.execute("SELECT * FROM forbidden WHERE user_name=? AND table_name=?", [targetUser, targetTable])
@@ -252,7 +252,7 @@ def grantAccess(userName, isUserSO, targetUser, targetTable, grantable):
     conn.commit()
     logMessageForSO('SUCCESSFUL_GRANT_OPERATION:', 'User [' + userName + '] granted [' + targetUser + '] access to [' + targetTable + ']')
     logMessageForRegularUsers(userName, 'SUCCESSFUL_GRANT_OPERATION:', 'You granted access [' + targetUser + '] on [' + targetTable + ']')
-    return True, 'User [' + targetUser + '] successfully gratned access privilege on table [' + targetTable + ']'
+    return True, 'User [' + targetUser + '] successfully granted access privilege on table [' + targetTable + ']'
 
 # Add user into forbidden table
 def addUserToForbiddenTable(targetUser, targetTable):
@@ -295,11 +295,11 @@ def forbidAccess(userName, isUserSO, targetUser, targetTable):
 
         # If so, print out warning message (first attempt failed) and update attempt value
         if queryResult != None:
-            # Check if forbid attemp was made before and if this is first forbid attempt,
+            # Check if forbid attempt was made before and if this is first forbid attempt,
             # stop forbidding operation and add forbid_attempt 1 and notify SO
             if queryResult["forbid_attempt"] == 0:
                 returnStr = 'User [' + targetUser + '] is in assigned table. Try operation again if you want to overwrite.'
-                returnStr = returnStr + '\nWarning: if you overwrite, then it may result disruption of operaionts for delegated users.'
+                returnStr = returnStr + '\nWarning: if you overwrite, then it may result in a disruption of operations for delegated users.'
                 logMessageForSO('FORBID_USER_ERROR', 'User [' + targetUser + '] already has access to the table [' + targetTable + ']. Operation stopped.')
                 cur.execute("UPDATE assigned SET forbid_attempt = 1 WHERE user_name=? AND table_name=?", (targetUser, targetTable))
                 conn.commit()
